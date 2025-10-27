@@ -40,13 +40,6 @@ class LuaEngineServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . '/../config/lua-engine.php' => config_path('lua-engine.php'),
         ], 'lua-engine-config');
-
-        // Publish assets if needed
-        if ($this->app->runningInConsole()) {
-            $this->commands([
-                Console\Commands\LuaTestCommand::class,
-            ]);
-        }
     }
 
     /**
