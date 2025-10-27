@@ -1,0 +1,38 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: [8.1, 8.2, 8.3, 8.4]
+        laravel: [10.*, 11.*, 12.*]
+      
+    name: PHP ${{ matrix.php }} Laravel ${{ matrix.laravel }}
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php }}
+        extensions: lua
+      
+    - name: Install Dependencies
+      run: composer install --prefer-dist --no-interaction
+      
+    - name: Run Tests
+      run: vendor/bin/phpunit --testdox
+      
+    - name: Upload Coverage
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage.xml
+
