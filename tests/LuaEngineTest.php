@@ -10,8 +10,8 @@ use Mockery;
 /**
  * Unit tests for LuaEngine class
  * 
- * Note: These tests require the Lua extension to be installed.
- * Run: sudo pecl install lua
+ * Note: These tests require the LuaSandbox extension to be installed.
+ * Run: sudo pecl install luasandbox
  */
 class LuaEngineTest extends TestCase
 {
@@ -22,20 +22,14 @@ class LuaEngineTest extends TestCase
     {
         parent::setUp();
         
-        // Skip tests if Lua extension is not available
-        if (!extension_loaded('lua')) {
-            $this->markTestSkipped('Lua extension is not installed. Run: sudo pecl install lua');
+        // Skip tests if LuaSandbox extension is not available
+        if (!extension_loaded('luasandbox')) {
+            $this->markTestSkipped('LuaSandbox extension is not installed. Run: sudo pecl install luasandbox');
         }
         
         $this->defaultConfig = [
-            'sandbox' => [
-                'allow_math' => true,
-                'allow_string' => true,
-                'allow_table' => true,
-                'global_functions' => [],
-            ],
             'options' => [
-                'timeout' => 30,
+                'cpu_limit' => 30,
                 'memory_limit' => '64M',
                 'log_errors' => true,
                 'log_level' => 'error',
@@ -66,48 +60,30 @@ class LuaEngineTest extends TestCase
     }
 
     /**
-     * Test constructor throws exception when Lua extension is not loaded
+     * Test constructor throws exception when LuaSandbox extension is not loaded
      */
-    public function test_constructor_throws_exception_when_lua_not_installed()
+    public function test_constructor_throws_exception_when_luasandbox_not_installed()
     {
         // Temporarily simulate missing extension
-        if (extension_loaded('lua')) {
-            $this->markTestSkipped('Lua extension is installed, cannot test this scenario');
+        if (extension_loaded('luasandbox')) {
+            $this->markTestSkipped('LuaSandbox extension is installed, cannot test this scenario');
         }
         
         $this->expectException(Exception::class);
-        $this->expectExceptionMessage('Lua extension is not installed');
+        $this->expectExceptionMessage('LuaSandbox extension is not installed');
         
         new LuaEngine($this->defaultConfig);
     }
 
     /**
-     * Test constructor with custom sandbox configuration
+     * Test constructor with custom configuration
      */
-    public function test_constructor_with_custom_sandbox_config()
+    public function test_constructor_with_custom_config()
     {
         $config = [
-            'sandbox' => [
-                'allow_math' => false,
-                'allow_string' => false,
-                'allow_table' => false,
-            ],
-        ];
-        
-        $engine = new LuaEngine($config);
-        $this->assertInstanceOf(LuaEngine::class, $engine);
-    }
-
-    /**
-     * Test setupSandbox with all modules disabled
-     */
-    public function test_setupSandbox_with_disabled_modules()
-    {
-        $config = [
-            'sandbox' => [
-                'allow_math' => false,
-                'allow_string' => false,
-                'allow_table' => false,
+            'options' => [
+                'cpu_limit' => 60,
+                'memory_limit' => '128M',
             ],
         ];
         
@@ -126,13 +102,24 @@ class LuaEngineTest extends TestCase
     }
 
     /**
-     * Test execute with data variable
+     * Test execute with data variable using registerLibrary
      */
     public function test_execute_with_data_variable()
     {
         $engine = new LuaEngine($this->defaultConfig);
         $data = ['name' => 'Test', 'value' => 100];
-        $result = $engine->execute('return data.value', $data);
+        
+        // Register data as a library to make it available in Lua
+        $engine->registerLibrary('data', [
+            'getValue' => function() use ($data) {
+                return $data['value'];
+            },
+            'getName' => function() use ($data) {
+                return $data['name'];
+            }
+        ]);
+        
+        $result = $engine->execute('return data.getValue()');
         $this->assertEquals(100, $result);
     }
 
@@ -162,8 +149,19 @@ class LuaEngineTest extends TestCase
     public function test_execute_with_table_operations()
     {
         $engine = new LuaEngine($this->defaultConfig);
-        $data = ['items' => [1, 2, 3]];
-        $result = $engine->execute('return #data.items', $data);
+        $items = [1, 2, 3];
+        
+        // Register items array as a library function
+        $engine->registerLibrary('data', [
+            'getItems' => function() use ($items) {
+                return $items;
+            },
+            'getItemsCount' => function() use ($items) {
+                return count($items);
+            }
+        ]);
+        
+        $result = $engine->execute('return data.getItemsCount()');
         $this->assertEquals(3, $result);
     }
 
@@ -184,7 +182,15 @@ class LuaEngineTest extends TestCase
     public function test_evaluate_returns_true()
     {
         $engine = new LuaEngine($this->defaultConfig);
-        $result = $engine->evaluate('data.value > 50', ['value' => 100]);
+        $value = 100;
+        
+        $engine->registerLibrary('data', [
+            'getValue' => function() use ($value) {
+                return $value;
+            }
+        ]);
+        
+        $result = $engine->evaluate('data.getValue() > 50');
         $this->assertTrue($result);
     }
 
@@ -194,7 +200,15 @@ class LuaEngineTest extends TestCase
     public function test_evaluate_returns_false()
     {
         $engine = new LuaEngine($this->defaultConfig);
-        $result = $engine->evaluate('data.value > 50', ['value' => 10]);
+        $value = 10;
+        
+        $engine->registerLibrary('data', [
+            'getValue' => function() use ($value) {
+                return $value;
+            }
+        ]);
+        
+        $result = $engine->evaluate('data.getValue() > 50');
         $this->assertFalse($result);
     }
 
@@ -230,9 +244,9 @@ class LuaEngineTest extends TestCase
     }
 
     /**
-     * Test registerFunction with PHP function
+     * Test registerLibrary with PHP function
      */
-    public function test_registerFunction_with_php_function()
+    public function test_registerLibrary_with_php_function()
     {
         $engine = new LuaEngine($this->defaultConfig);
         
@@ -240,9 +254,11 @@ class LuaEngineTest extends TestCase
             return $x * 2;
         };
         
-        $engine->registerFunction('double', $callback);
+        $engine->registerLibrary('math', [
+            'double' => $callback
+        ]);
         
-        $result = $engine->execute('return double(21)');
+        $result = $engine->execute('return math.double(21)');
         $this->assertEquals(42, $result);
     }
 
@@ -297,10 +313,10 @@ class LuaEngineTest extends TestCase
      */
     public function test_isAvailable_returns_true_when_extension_loaded()
     {
-        if (extension_loaded('lua')) {
+        if (extension_loaded('luasandbox')) {
             $this->assertTrue(LuaEngine::isAvailable());
         } else {
-            $this->markTestSkipped('Cannot test - Lua extension not installed');
+            $this->markTestSkipped('Cannot test - LuaSandbox extension not installed');
         }
     }
 
@@ -339,9 +355,9 @@ class LuaEngineTest extends TestCase
     }
 
     /**
-     * Test registerFunctions with multiple functions
+     * Test registerLibrary with multiple functions
      */
-    public function test_registerFunctions_with_multiple_functions()
+    public function test_registerLibrary_with_multiple_functions()
     {
         $engine = new LuaEngine($this->defaultConfig);
         
@@ -350,110 +366,56 @@ class LuaEngineTest extends TestCase
             'cube' => function($x) { return $x * $x * $x; },
         ];
         
-        $engine->registerFunctions($functions);
+        $engine->registerLibrary('math', $functions);
         
-        $result1 = $engine->execute('return square(5)');
+        $result1 = $engine->execute('return math.square(5)');
         $this->assertEquals(25, $result1);
         
-        $result2 = $engine->execute('return cube(3)');
+        $result2 = $engine->execute('return math.cube(3)');
         $this->assertEquals(27, $result2);
     }
 
     /**
-     * Test clearGlobals
+     * Test callFunction with valid Lua function
      */
-    public function test_clearGlobals()
+    public function test_callFunction_with_valid_function()
     {
         $engine = new LuaEngine($this->defaultConfig);
         
-        // Assign data
-        $engine->execute('data = {value = 42}');
-        
-        // Clear globals
-        $engine->clearGlobals();
-        
-        // Try to access data (should be nil)
-        $result = $engine->execute('return data');
-        $this->assertNull($result);
-    }
-
-    /**
-     * Test assign with different data types
-     */
-    public function test_assign_with_different_data_types()
-    {
-        $engine = new LuaEngine($this->defaultConfig);
-        
-        // Test with string
-        $result = $engine->assign('testString', 'hello');
-        $this->assertNotNull($result);
-        
-        // Test with number
-        $result = $engine->assign('testNumber', 42);
-        $this->assertNotNull($result);
-        
-        // Test with array
-        $result = $engine->assign('testArray', [1, 2, 3]);
-        $this->assertNotNull($result);
-        
-        // Test with boolean
-        $result = $engine->assign('testBool', true);
-        $this->assertNotNull($result);
-    }
-
-    /**
-     * Test assign and verify value in Lua
-     */
-    public function test_assign_and_verify_value()
-    {
-        $engine = new LuaEngine($this->defaultConfig);
-        
-        $engine->assign('myVar', 'test_value');
-        $result = $engine->execute('return myVar');
-        
-        $this->assertEquals('test_value', $result);
-    }
-
-    /**
-     * Test call with valid Lua function
-     */
-    public function test_call_with_valid_function()
-    {
-        $engine = new LuaEngine($this->defaultConfig);
-        
-        // Define function in Lua
+        // Define function in Lua and store it globally
         $engine->execute('
-            function add(a, b)
+            _G["add"] = function(a, b)
                 return a + b
             end
         ');
         
         // Call function
-        $result = $engine->call('add', [5, 3]);
-        $this->assertEquals(8, $result);
+        $result = $engine->callFunction('add', 5, 3);
+        $this->assertIsArray($result);
+        $this->assertEquals(8, $result[0]);
     }
 
     /**
-     * Test call with nonexistent function
+     * Test callFunction with nonexistent function
      */
-    public function test_call_with_nonexistent_function()
+    public function test_callFunction_with_nonexistent_function()
     {
         $engine = new LuaEngine($this->defaultConfig);
         
         // Call function that doesn't exist
-        $result = $engine->call('nonexistent', []);
-        $this->assertNull($result);
+        $result = $engine->callFunction('nonexistent');
+        $this->assertFalse($result);
         $this->assertNotNull($engine->getLastError());
     }
 
     /**
-     * Test applyResourceLimits with timeout
+     * Test resource limits with cpu_limit
      */
-    public function test_applyResourceLimits_with_timeout()
+    public function test_resource_limits_with_cpu_limit()
     {
         $config = [
             'options' => [
-                'timeout' => 60,
+                'cpu_limit' => 60,
             ],
         ];
         
@@ -463,10 +425,13 @@ class LuaEngineTest extends TestCase
 
     /**
      * Test parseMemoryLimit with different formats
+     * 
+     * Note: This test now verifies the behavior indirectly through LuaEngine.
+     * Direct unit tests for Utils::parseMemoryLimit can be found in UtilsTest.
      */
     public function test_parseMemoryLimit_different_formats()
     {
-        // We can't easily test this protected method, but we can verify behavior indirectly
+        // Test various memory limit formats through LuaEngine initialization
         $config = [
             'options' => [
                 'memory_limit' => '128M',
@@ -475,10 +440,23 @@ class LuaEngineTest extends TestCase
         
         $engine = new LuaEngine($config);
         $this->assertInstanceOf(LuaEngine::class, $engine);
+        
+        // Test with kilobytes
+        $config['options']['memory_limit'] = '64K';
+        $engine2 = new LuaEngine($config);
+        $this->assertInstanceOf(LuaEngine::class, $engine2);
+        
+        // Test with gigabytes
+        $config['options']['memory_limit'] = '2G';
+        $engine3 = new LuaEngine($config);
+        $this->assertInstanceOf(LuaEngine::class, $engine3);
     }
 
     /**
-     * Test logError with different log levels
+     * Test logError with different log levels through LuaEngine
+     * 
+     * Note: Direct unit tests for Utils::logError can be found in UtilsTest.
+     * These tests verify the integration with LuaEngine.
      */
     public function test_logError_with_debug_level()
     {
@@ -551,28 +529,30 @@ class LuaEngineTest extends TestCase
     }
 
     /**
-     * Test global_functions configuration
+     * Test registerLibrary configuration
      */
-    public function test_global_functions_configuration()
+    public function test_registerLibrary_configuration()
     {
         $config = [
-            'sandbox' => [
-                'global_functions' => [
-                    'testFunc' => function($x) {
-                        return $x * 2;
-                    },
-                ],
+            'options' => [
+                'cpu_limit' => 30,
             ],
         ];
         
         $engine = new LuaEngine($config);
         
-        $result = $engine->execute('return testFunc(21)');
+        $engine->registerLibrary('custom', [
+            'testFunc' => function($x) {
+                return $x * 2;
+            },
+        ]);
+        
+        $result = $engine->execute('return custom.testFunc(21)');
         $this->assertEquals(42, $result);
     }
 
     /**
-     * Test execute with complex data structure
+     * Test execute with complex data structure using registerLibrary
      */
     public function test_execute_with_complex_data_structure()
     {
@@ -586,11 +566,20 @@ class LuaEngineTest extends TestCase
             ],
         ];
         
-        $result = $engine->execute('return data.user.name', $data);
+        $engine->registerLibrary('data', [
+            'getUserName' => function() use ($data) {
+                return $data['user']['name'];
+            },
+            'getUserHobby' => function($index) use ($data) {
+                return $data['user']['hobbies'][$index - 1]; // Lua is 1-indexed
+            }
+        ]);
+        
+        $result = $engine->execute('return data.getUserName()');
         $this->assertEquals('John', $result);
         
-        // Lua arrays start at 1, so hobbies[1] is the first element
-        $result = $engine->execute('return data.user.hobbies[1]', $data);
+        // Lua arrays start at 1
+        $result = $engine->execute('return data.getUserHobby(1)');
         $this->assertEquals('reading', $result);
     }
 
@@ -601,44 +590,64 @@ class LuaEngineTest extends TestCase
     {
         $engine = new LuaEngine($this->defaultConfig);
         
-        $data = [
-            'user' => ['age' => 25],
-            'minimumAge' => 18,
-        ];
+        $userAge = 25;
+        $minimumAge = 18;
         
-        $result = $engine->evaluate('data.user.age >= data.minimumAge', $data);
+        $engine->registerLibrary('data', [
+            'getUserAge' => function() use ($userAge) {
+                return $userAge;
+            },
+            'getMinimumAge' => function() use ($minimumAge) {
+                return $minimumAge;
+            }
+        ]);
+        
+        $result = $engine->evaluate('data.getUserAge() >= data.getMinimumAge()');
         $this->assertTrue($result);
     }
 
     /**
-     * Test execute with multiple variables
+     * Test execute with multiple variables using registerLibrary
      */
     public function test_execute_with_multiple_variables()
     {
         $engine = new LuaEngine($this->defaultConfig);
         
-        $engine->assign('var1', 10);
-        $engine->assign('var2', 20);
+        $var1 = 10;
+        $var2 = 20;
         
-        $result = $engine->execute('return var1 + var2');
+        $engine->registerLibrary('vars', [
+            'getVar1' => function() use ($var1) {
+                return $var1;
+            },
+            'getVar2' => function() use ($var2) {
+                return $var2;
+            }
+        ]);
+        
+        $result = $engine->execute('return vars.getVar1() + vars.getVar2()');
         $this->assertEquals(30, $result);
     }
 
     /**
-     * Test execute with table access
+     * Test execute with table access using registerLibrary
      */
     public function test_execute_with_table_access()
     {
         $engine = new LuaEngine($this->defaultConfig);
         
-        $data = [
-            'numbers' => [10, 20, 30],
-        ];
+        $numbers = [10, 20, 30];
         
-        $result = $engine->execute('return data.numbers[1]', $data);
+        $engine->registerLibrary('data', [
+            'getNumber' => function($index) use ($numbers) {
+                return $numbers[$index - 1]; // Lua is 1-indexed
+            }
+        ]);
+        
+        $result = $engine->execute('return data.getNumber(1)');
         $this->assertEquals(10, $result);
         
-        $result = $engine->execute('return data.numbers[2]', $data);
+        $result = $engine->execute('return data.getNumber(2)');
         $this->assertEquals(20, $result);
     }
 
@@ -649,14 +658,20 @@ class LuaEngineTest extends TestCase
     {
         $engine = new LuaEngine($this->defaultConfig);
         
-        $data = [
-            'status' => 'active',
-            'score' => 85,
-        ];
+        $status = 'active';
+        $score = 85;
+        
+        $engine->registerLibrary('data', [
+            'getStatus' => function() use ($status) {
+                return $status;
+            },
+            'getScore' => function() use ($score) {
+                return $score;
+            }
+        ]);
         
         $result = $engine->evaluate(
-            'data.status == "active" and data.score > 80',
-            $data
+            'data.getStatus() == "active" and data.getScore() > 80'
         );
         
         $this->assertTrue($result);
@@ -669,14 +684,20 @@ class LuaEngineTest extends TestCase
     {
         $engine = new LuaEngine($this->defaultConfig);
         
-        $data = [
-            'status' => 'inactive',
-            'score' => 85,
-        ];
+        $status = 'inactive';
+        $score = 85;
+        
+        $engine->registerLibrary('data', [
+            'getStatus' => function() use ($status) {
+                return $status;
+            },
+            'getScore' => function() use ($score) {
+                return $score;
+            }
+        ]);
         
         $result = $engine->evaluate(
-            'data.status == "active" and data.score > 80',
-            $data
+            'data.getStatus() == "active" and data.getScore() > 80'
         );
         
         $this->assertFalse($result);
