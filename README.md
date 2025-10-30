@@ -82,14 +82,14 @@ echo $result; // 42
 // Pass data to Lua using registerLibrary
 // Note: Functions must return arrays (LuaSandbox requirement)
 $data = ['name' => 'John', 'age' => 30];
-LuaEngine::registerLibrary('data', [
+LuaEngine::registerLibrary([
     'getName' => function() use ($data) {
         return [$data['name']]; // Return as array
     },
     'getAge' => function() use ($data) {
         return [$data['age']];
     },
-]);
+], 'data');
 $result = LuaEngine::execute('return data.getName()');
 echo $result; // John
 ```
@@ -142,14 +142,14 @@ $data = [
 
 // Access nested data using registerLibrary
 // Note: Functions must return arrays (LuaSandbox requirement)
-LuaEngine::registerLibrary('data', [
+LuaEngine::registerLibrary([
     'getUserName' => function() use ($data) {
         return [$data['user']['name']]; // Return as array
     },
     'getScore' => function($index) use ($data) {
         return [$data['user']['scores'][$index - 1]]; // Lua is 1-indexed
     },
-]);
+], 'data');
 
 $name = LuaEngine::execute('return data.getUserName()');
 // Result: "Alice"
@@ -170,14 +170,14 @@ use DiogoGraciano\LuaEngine\Facades\LuaEngine;
 $data = ['age' => 25, 'minimumAge' => 18];
 
 // Note: Functions must return arrays (LuaSandbox requirement)
-LuaEngine::registerLibrary('data', [
+LuaEngine::registerLibrary([
     'getAge' => function() use ($data) {
         return [$data['age']]; // Return as array
     },
     'getMinimumAge' => function() use ($data) {
         return [$data['minimumAge']];
     },
-]);
+], 'data');
 
 $canVote = LuaEngine::evaluate('data.getAge() >= data.getMinimumAge()');
 // Result: true
@@ -194,11 +194,11 @@ use DiogoGraciano\LuaEngine\Facades\LuaEngine;
 $data = ['message' => 'hello world'];
 
 // Note: Functions must return arrays (LuaSandbox requirement)
-LuaEngine::registerLibrary('data', [
+LuaEngine::registerLibrary([
     'getMessage' => function() use ($data) {
         return [$data['message']]; // Return as array
     },
-]);
+], 'data');
 
 // Transform string
 $upper = LuaEngine::execute('return string.upper(data.getMessage())');
@@ -216,7 +216,7 @@ use DiogoGraciano\LuaEngine\Facades\LuaEngine;
 
 // Register a library of PHP functions
 // Note: Functions must return arrays (LuaSandbox requirement)
-LuaEngine::registerLibrary('custom', [
+LuaEngine::registerLibrary([
     'double' => function($x) {
         return [$x * 2]; // Return as array
     },
@@ -226,7 +226,7 @@ LuaEngine::registerLibrary('custom', [
     'cube' => function($x) {
         return [$x * $x * $x];
     },
-]);
+], 'custom');
 
 // Use in Lua - functions are accessible as custom.functionName()
 $result = LuaEngine::execute('return custom.double(21)');
@@ -236,11 +236,11 @@ $square = LuaEngine::execute('return custom.square(5)'); // 25
 $cube = LuaEngine::execute('return custom.cube(3)'); // 27
 
 // Extend the library - add more functions to existing table
-LuaEngine::registerLibrary('custom', [
+LuaEngine::registerLibrary([
     'add' => function($a, $b) {
         return [$a + $b];
     },
-]);
+], 'custom');
 // Now custom library has: double, square, cube, and add
 ```
 
@@ -265,11 +265,11 @@ use DiogoGraciano\LuaEngine\Facades\LuaEngine;
 // Execute from a file
 // Note: If your Lua script needs data, use registerLibrary first
 // Functions must return arrays (LuaSandbox requirement)
-LuaEngine::registerLibrary('data', [
+LuaEngine::registerLibrary([
     'getValue' => function() {
         return [100]; // Return as array
     },
-]);
+], 'data');
 $result = LuaEngine::executeFile('/path/to/script.lua');
 ```
 
@@ -326,7 +326,7 @@ $order = [
 
 // Register order data as a library
 // Note: Functions must return arrays (LuaSandbox requirement)
-LuaEngine::registerLibrary('data', [
+LuaEngine::registerLibrary([
     'getItemPrice' => function($index) use ($order) {
         return [$order['items'][$index - 1]['price']]; // Return as array
     },
@@ -342,7 +342,7 @@ LuaEngine::registerLibrary('data', [
     'getTax' => function() use ($order) {
         return [$order['tax']];
     },
-]);
+], 'data');
 
 $total = LuaEngine::execute('
     local subtotal = 0
@@ -358,6 +358,25 @@ $total = LuaEngine::execute('
 
 echo "Total: $" . number_format($total, 2);
 // Total: $35.64
+```
+
+### Example 11: Registering a single function with registerFunction
+
+```php
+use DiogoGraciano\LuaEngine\Facades\LuaEngine;
+
+// Register only one function inside a library (creates the lib if needed)
+LuaEngine::registerFunction('triple', function($x) {
+    return [$x * 3];
+}, 'mathx');
+
+$value = LuaEngine::execute('return mathx.triple(7)');
+// Result: 21
+
+// You can keep adding more functions to the same library
+LuaEngine::registerFunction('inc', fn($x) => [$x + 1], 'mathx');
+$next = LuaEngine::execute('return mathx.inc(21)');
+// Result: 22
 ```
 
 ## API Reference
@@ -423,15 +442,15 @@ if (LuaEngine::validate($userScript)) {
 
 ---
 
-#### `registerLibrary(string $libname, array $functions): void`
+#### `registerLibrary(array $functions, string $libname = 'php'): void`
 
 Register a set of PHP functions as a Lua library.
 
 This method wraps [LuaSandbox::registerLibrary()](https://www.php.net/manual/en/luasandbox.registerlibrary.php).
 
 **Parameters:**
-- `$libname` - The name of the library. In the Lua state, the global variable of this name will be set to a table of functions
 - `$functions` - An associative array where each key is a function name and each value is a corresponding PHP callable (function name string or callable)
+- `$libname` - The name of the library. In the Lua state, the global variable of this name will be set to a table of functions
 
 **Important Notes:**
 - If a table with the same `$libname` already exists in Lua, the new functions will be **added** to the existing table (not replaced)
@@ -451,7 +470,7 @@ function frobnosticate($v) {
 }
 
 // Register library with both callables and function name strings
-LuaEngine::registerLibrary('php', [
+LuaEngine::registerLibrary([
     'frobnosticate' => 'frobnosticate', // Function name as string
     'output' => function($string) {      // Void function - no return needed
         echo "$string\n";
@@ -463,7 +482,7 @@ LuaEngine::registerLibrary('php', [
         throw new \LuaSandboxRuntimeError("Something is wrong");
     },
     'multiply' => fn($a, $b) => [$a * $b], // Arrow function
-]);
+], 'php');
 
 // Use in Lua - functions are accessible as php.functionName()
 $result = LuaEngine::execute('return php.frobnosticate(100)'); // 142
@@ -489,7 +508,6 @@ This method wraps [LuaSandbox::loadString()](https://www.php.net/manual/en/luasa
 
 **Parameters:**
 - `$code` - Lua code string
-- `$chunkName` - Optional chunk name for debugging (default: '')
 
 **Returns:** `LuaSandboxFunction` on success, `false` on failure
 
@@ -542,14 +560,53 @@ This method wraps [LuaSandbox::wrapPhpFunction()](https://www.php.net/manual/en/
 **Example:**
 ```php
 $phpFunc = LuaEngine::wrapPhpFunction(function($x) {
-    return $x * 2;
+    return [$x * 2];
 });
 
-// Assign to Lua global
-LuaEngine::execute('double = ...', [$phpFunc]);
-$result = LuaEngine::execute('return double(21)');
-// Result: 42
+if ($phpFunc !== false) {
+    // Call directly from PHP
+    $ret = $phpFunc->call(21); // returns array [42]
+}
+
+// Tip: For exposing PHP functions to Lua, prefer registerFunction/registerLibrary
+LuaEngine::registerFunction('double', function($x) { return [$x * 2]; }, 'custom');
+$result = LuaEngine::execute('return custom.double(21)'); // 42
 ```
+
+---
+
+#### `registerFunction(string $functionName, callable $function, string $libName = 'php'): void`
+
+Register a single PHP function inside a Lua library (creates the library if it doesn't exist yet).
+
+**Parameters:**
+- `$functionName` - Function name as exposed to Lua
+- `$function` - PHP callable that returns an array when returning a value
+- `$libName` - Library name (table in Lua)
+
+**Example:**
+```php
+LuaEngine::registerFunction('triple', fn($x) => [$x * 3], 'mathx');
+$res = LuaEngine::execute('return mathx.triple(7)'); // 21
+```
+
+---
+
+#### `getRegisteredFunctions(string $libName = 'php'): array`
+
+Get all registered functions for a specific library.
+
+---
+
+#### `getRegisteredLibrary(): array`
+
+Get all libraries and their registered functions.
+
+---
+
+#### `isRegisteredFunction(string $libName = 'php', string $functionName): bool`
+
+Check whether a function is registered within a given library.
 
 ---
 
