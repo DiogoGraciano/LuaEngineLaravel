@@ -215,10 +215,9 @@ class LuaEngine implements LuaEngineInterface
      *     },
      * ]);
      */
-    public function registerLibrary(string $libName, array $functions): void
+    public function registerLibrary(array $functions, string $libName = 'php'): void
     {
         try {
-            // Merge functions with existing library if it exists (for internal tracking)
             if (isset($this->registeredFunctions[$libName])) {
                 $this->registeredFunctions[$libName] = array_merge(
                     $this->registeredFunctions[$libName],
@@ -228,12 +227,65 @@ class LuaEngine implements LuaEngineInterface
                 $this->registeredFunctions[$libName] = $functions;
             }
             
-            // LuaSandbox automatically adds functions to existing table if libname exists
             $this->sandbox->registerLibrary($libName, $functions);
         } catch (\Exception $e) {
             $this->lastError = $e->getMessage();
-            Utils::logError("Error registering Lua library '{$libName}': " . $e->getMessage(), [], $this->optionsConfig);
+            Utils::logError("Error registering Lua library '{$libName}': " . $e->getMessage(), [], $this->optionsConfig);;
+            throw $e;
         }
+    }
+
+    /**
+     * Register a PHP function in a library in Lua
+     * 
+     * @param string $functionName Function name
+     * @param callable $function Function to register
+     * @param string $libName Library name
+     * @return bool True if function is registered, false otherwise
+     */
+    public function registerFunction(string $functionName, callable $function, string $libName = 'php'): void
+    {
+        try {
+            $this->registeredFunctions[$libName][$functionName] = $function;
+            $this->sandbox->registerLibrary($libName, [$functionName => $function]);
+        } catch (\Exception $e) {
+            $this->lastError = $e->getMessage();
+            Utils::logError("Error registering Lua function '{$functionName}' in library '{$libName}': " . $e->getMessage(), [], $this->optionsConfig);
+            throw $e;
+        }
+    }
+
+     /**
+     * Get the registered functions
+     * 
+     * @param string $libName Library name
+     * @return array Registered functions
+    */
+    public function getRegisteredLibrary(): array
+    {
+        return $this->registeredFunctions;
+    }
+
+    /**
+     * Get the registered functions
+     * 
+     * @param string $libName Library name
+     * @return array Registered functions
+     */
+    public function getRegisteredFunctions(string $libName = 'php'): array
+    {
+        return $this->registeredFunctions[$libName] ?? [];
+    }
+
+    /**
+     * Get the registered function
+     * 
+     * @param string $functionName Function name
+     * @return bool True if function is registered, false otherwise
+     */
+    public function isRegisteredFunction(string $libName = 'php', string $functionName): bool
+    {
+        return isset($this->registeredFunctions[$libName][$functionName]);
     }
 
     /**

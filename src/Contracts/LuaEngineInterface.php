@@ -38,7 +38,41 @@ interface LuaEngineInterface
      * @param array $functions Associative array of function names to callables
      * @return void
      */
-    public function registerLibrary(string $libName, array $functions): void;
+    public function registerLibrary( array $functions, string $libName = 'php'): void;
+
+    /**
+     * Register a PHP function in a library in Lua (LuaSandbox::registerFunction equivalent)
+     * 
+     * @param string $functionName Function name
+     * @param callable $function Function to register
+     * @param string $libName Library name
+     * @return void
+     */
+    public function registerFunction(string $functionName, callable $function, string $libName = 'php'): void;
+
+    /**
+     * Get the registered functions
+     * 
+     * @param string $libName Library name
+     * @return array Registered functions
+    */
+    public function getRegisteredLibrary(): array;
+
+    /**
+     * Get the registered functions
+     * 
+     * @param string $libName Library name
+     * @return array Registered functions
+     */
+    public function getRegisteredFunctions(string $libName = 'php'): array;
+
+    /**
+     * Get the registered function
+     * 
+     * @param string $functionName Function name
+     * @return bool True if function is registered, false otherwise
+     */
+    public function isRegisteredFunction(string $libName = 'php', string $functionName): bool;
 
     /**
      * Wrap a PHP function/callable for use in Lua (LuaSandbox::wrapPhpFunction equivalent)
