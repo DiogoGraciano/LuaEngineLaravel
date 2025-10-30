@@ -104,11 +104,15 @@ class UtilsTest extends TestCase
      */
     public function test_logError_with_default_config()
     {
+        Log::shouldReceive('debug')->never();
+        Log::shouldReceive('info')->never();
+        Log::shouldReceive('warning')->never();
         Log::shouldReceive('error')
             ->once()
             ->with('Test message', []);
         
         Utils::logError('Test message', [], []);
+        $this->addToAssertionCount(1);
     }
 
     /**
@@ -116,6 +120,9 @@ class UtilsTest extends TestCase
      */
     public function test_logError_with_debug_level()
     {
+        Log::shouldReceive('info')->never();
+        Log::shouldReceive('warning')->never();
+        Log::shouldReceive('error')->never();
         Log::shouldReceive('debug')
             ->once()
             ->with('Debug message', ['key' => 'value']);
@@ -123,6 +130,7 @@ class UtilsTest extends TestCase
         Utils::logError('Debug message', ['key' => 'value'], [
             'log_level' => 'debug'
         ]);
+        $this->addToAssertionCount(1);
     }
 
     /**
@@ -130,6 +138,9 @@ class UtilsTest extends TestCase
      */
     public function test_logError_with_info_level()
     {
+        Log::shouldReceive('debug')->never();
+        Log::shouldReceive('warning')->never();
+        Log::shouldReceive('error')->never();
         Log::shouldReceive('info')
             ->once()
             ->with('Info message', []);
@@ -137,6 +148,7 @@ class UtilsTest extends TestCase
         Utils::logError('Info message', [], [
             'log_level' => 'info'
         ]);
+        $this->addToAssertionCount(1);
     }
 
     /**
@@ -144,6 +156,9 @@ class UtilsTest extends TestCase
      */
     public function test_logError_with_warning_level()
     {
+        Log::shouldReceive('debug')->never();
+        Log::shouldReceive('info')->never();
+        Log::shouldReceive('error')->never();
         Log::shouldReceive('warning')
             ->once()
             ->with('Warning message', []);
@@ -151,6 +166,7 @@ class UtilsTest extends TestCase
         Utils::logError('Warning message', [], [
             'log_level' => 'warning'
         ]);
+        $this->addToAssertionCount(1);
     }
 
     /**
@@ -158,6 +174,9 @@ class UtilsTest extends TestCase
      */
     public function test_logError_with_error_level()
     {
+        Log::shouldReceive('debug')->never();
+        Log::shouldReceive('info')->never();
+        Log::shouldReceive('warning')->never();
         Log::shouldReceive('error')
             ->once()
             ->with('Error message', []);
@@ -165,6 +184,7 @@ class UtilsTest extends TestCase
         Utils::logError('Error message', [], [
             'log_level' => 'error'
         ]);
+        $this->addToAssertionCount(1);
     }
 
     /**
@@ -172,14 +192,15 @@ class UtilsTest extends TestCase
      */
     public function test_logError_disabled()
     {
-        Log::shouldNotReceive('error');
-        Log::shouldNotReceive('debug');
-        Log::shouldNotReceive('info');
-        Log::shouldNotReceive('warning');
+        Log::shouldReceive('error')->never();
+        Log::shouldReceive('debug')->never();
+        Log::shouldReceive('info')->never();
+        Log::shouldReceive('warning')->never();
         
         Utils::logError('Should not log', [], [
             'log_errors' => false
         ]);
+        $this->addToAssertionCount(1);
     }
 
     /**
@@ -187,11 +208,15 @@ class UtilsTest extends TestCase
      */
     public function test_logError_with_array_message()
     {
+        Log::shouldReceive('debug')->never();
+        Log::shouldReceive('info')->never();
+        Log::shouldReceive('warning')->never();
         Log::shouldReceive('error')
             ->once()
             ->with('Lua error', ['error' => 'test error']);
         
         Utils::logError(['error' => 'test error'], [], []);
+        $this->addToAssertionCount(1);
     }
 
     /**
@@ -199,11 +224,15 @@ class UtilsTest extends TestCase
      */
     public function test_logError_with_empty_context()
     {
+        Log::shouldReceive('debug')->never();
+        Log::shouldReceive('info')->never();
+        Log::shouldReceive('warning')->never();
         Log::shouldReceive('error')
             ->once()
             ->with('Test', []);
         
         Utils::logError('Test', [], []);
+        $this->addToAssertionCount(1);
     }
 
     /**
@@ -217,11 +246,15 @@ class UtilsTest extends TestCase
             'line' => 42,
         ];
         
+        Log::shouldReceive('debug')->never();
+        Log::shouldReceive('info')->never();
+        Log::shouldReceive('warning')->never();
         Log::shouldReceive('error')
             ->once()
             ->with('Lua error occurred', $context);
         
         Utils::logError('Lua error occurred', $context, []);
+        $this->addToAssertionCount(1);
     }
 }
 
