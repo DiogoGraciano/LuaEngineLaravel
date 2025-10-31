@@ -23,7 +23,25 @@ jobs:
       uses: shivammathur/setup-php@v2
       with:
         php-version: ${{ matrix.php }}
-        extensions: luasandbox
+      
+    - name: Install Lua dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y lua5.3 liblua5.3-dev
+      
+    - name: Install luasandbox extension
+      run: |
+        yes '' | sudo pecl install luasandbox
+        INI_PATH=$(php --ini | grep "Scan for additional .ini files" | sed -e "s|.*:\s*||")
+        if [ -d "$INI_PATH" ]; then
+          echo "extension=luasandbox.so" | sudo tee "$INI_PATH/luasandbox.ini"
+        else
+          echo "extension=luasandbox.so" | sudo tee -a $(php -i | grep "Loaded Configuration File" | awk '{print $5}')
+        fi
+      
+    - name: Verify luasandbox extension
+      run: |
+        php -m | grep luasandbox || (echo "Extension not found!" && php -m && exit 1)
       
     - name: Install Dependencies
       run: composer install --prefer-dist --no-interaction
