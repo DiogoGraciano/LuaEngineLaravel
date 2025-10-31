@@ -48,7 +48,7 @@ class LuaEngine implements LuaEngineInterface
         $this->sandbox->setMemoryLimit($memoryLimitBytes);
 
         // Set CPU limit (in seconds)
-        $cpuLimit = $this->optionsConfig['cpu_limit'];
+        $cpuLimit = $this->optionsConfig['cpu_limit'] ?? null;
         if (is_numeric($cpuLimit) && $cpuLimit > 0) {
             $this->sandbox->setCPULimit((float) $cpuLimit);
         }
