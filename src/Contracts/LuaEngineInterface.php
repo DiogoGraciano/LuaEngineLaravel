@@ -99,12 +99,11 @@ interface LuaEngineInterface
     public function setCPULimit(float $seconds): void;
 
     /**
-     * Execute Lua script with data
+     * Execute Lua script
      * 
-     * Convenience method that loads and executes code with data binding
+     * Convenience method that loads and executes code
      * 
      * @param string $script Lua code
-     * @param array $data Data available as 'data' variable in Lua
      * @return mixed Execution result
      */
     public function execute(string $script): mixed;
@@ -115,7 +114,6 @@ interface LuaEngineInterface
      * Convenience method for conditional evaluations
      * 
      * @param string $script Lua expression
-     * @param array $data Data available as 'data' variable in Lua
      * @return bool Evaluation result
      */
     public function evaluate(string $script): bool;
@@ -127,15 +125,6 @@ interface LuaEngineInterface
      * @return bool True if valid, false otherwise
      */
     public function validate(string $script): bool;
-
-    /**
-     * Assign PHP variable to Lua environment
-     * 
-     * @param string $name Variable name in Lua
-     * @param mixed $value Variable value
-     * @return mixed Returns $this on success, null on failure
-     */
-    public function assign(string $name, mixed $value): mixed;
 
     /**
      * Get the last error message
