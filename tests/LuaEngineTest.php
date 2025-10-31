@@ -763,8 +763,8 @@ class LuaEngineTest extends TestCase
 
         $engine->registerFunction('exists', function() { return [1]; }, 'check');
 
-        $this->assertTrue($engine->isRegisteredFunction('check', 'exists'));
-        $this->assertFalse($engine->isRegisteredFunction('check', 'missing'));
+        $this->assertTrue($engine->isRegisteredFunction('exists', 'check'));
+        $this->assertFalse($engine->isRegisteredFunction('missing', 'check'));
     }
 
     /**

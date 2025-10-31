@@ -70,9 +70,10 @@ interface LuaEngineInterface
      * Get the registered function
      * 
      * @param string $functionName Function name
+     * @param string $libName Library name
      * @return bool True if function is registered, false otherwise
      */
-    public function isRegisteredFunction(string $libName = 'php', string $functionName): bool;
+    public function isRegisteredFunction(string $functionName, string $libName = 'php'): bool;
 
     /**
      * Wrap a PHP function/callable for use in Lua (LuaSandbox::wrapPhpFunction equivalent)

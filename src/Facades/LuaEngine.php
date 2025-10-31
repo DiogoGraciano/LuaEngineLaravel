@@ -15,7 +15,7 @@ use DiogoGraciano\LuaEngine\Contracts\LuaEngineInterface;
  * @method static void registerFunction(string $functionName, callable $function, string $libName = 'php')
  * @method static array getRegisteredLibrary()
  * @method static array getRegisteredFunctions(string $libName = 'php')
- * @method static bool isRegisteredFunction(string $libName = 'php', string $functionName)
+ * @method static bool isRegisteredFunction(string $functionName, string $libName = 'php')
  * @method static \LuaSandboxFunction|false loadString(string $code)
  * @method static array|false callFunction(string $name, mixed ...$args)
  * @method static \LuaSandboxFunction|false wrapPhpFunction(callable $function)

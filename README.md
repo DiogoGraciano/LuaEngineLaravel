@@ -604,7 +604,7 @@ Get all libraries and their registered functions.
 
 ---
 
-#### `isRegisteredFunction(string $libName = 'php', string $functionName): bool`
+#### `isRegisteredFunction(string $functionName, string $libName = 'php'): bool`
 
 Check whether a function is registered within a given library.
 

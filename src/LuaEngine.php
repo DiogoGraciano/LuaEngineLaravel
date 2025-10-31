@@ -61,7 +61,7 @@ class LuaEngine implements LuaEngineInterface
      * @param array $data Data available in the script
      * @return mixed Execution result
      */
-    public function execute(string $script)
+    public function execute(string $script): mixed
     {
         try {
             // Load and execute script
@@ -281,9 +281,10 @@ class LuaEngine implements LuaEngineInterface
      * Get the registered function
      * 
      * @param string $functionName Function name
+     * @param string $libName Library name
      * @return bool True if function is registered, false otherwise
      */
-    public function isRegisteredFunction(string $libName = 'php', string $functionName): bool
+    public function isRegisteredFunction(string $functionName, string $libName = 'php'): bool
     {
         return isset($this->registeredFunctions[$libName][$functionName]);
     }
